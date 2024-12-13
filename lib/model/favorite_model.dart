@@ -1,18 +1,16 @@
-// import 'package:japanese_flashcard_application/model/meaning_model.dart';
-
 class FavoriteModel {
   final String word;
   final List<String> onyomiReadings;
   final List<String> kunyomiReadings;
   final List<String> nanoriReadings;
-  // final List<WordMeaning> wordMeanings;
+  final List<String> wordMeanings;
 
   FavoriteModel({
     required this.word,
     required this.onyomiReadings,
     required this.kunyomiReadings,
     required this.nanoriReadings,
-    // required this.wordMeanings,
+    required this.wordMeanings,
   });
 
   @override
@@ -23,8 +21,8 @@ class FavoriteModel {
         other.word == word &&
         other.onyomiReadings == onyomiReadings &&
         other.kunyomiReadings == kunyomiReadings &&
-        other.nanoriReadings == nanoriReadings ;
-        // other.wordMeanings == wordMeanings;
+        other.nanoriReadings == nanoriReadings &&
+        other.wordMeanings == wordMeanings;
   }
 
   @override
@@ -32,8 +30,8 @@ class FavoriteModel {
     return word.hashCode ^
         onyomiReadings.hashCode ^
         kunyomiReadings.hashCode ^
-        nanoriReadings.hashCode ;
-        // wordMeanings.hashCode;
+        nanoriReadings.hashCode ^
+        wordMeanings.hashCode;
   }
 }
 

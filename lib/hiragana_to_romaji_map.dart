@@ -51,7 +51,7 @@ String convertHiraganaToRomaji(String reading) {
     }
     else {
       // Handle cases where a character doesn't match
-      romaji += '?'; 
+      romaji += reading[i]; 
       i += 1;
     }
   }

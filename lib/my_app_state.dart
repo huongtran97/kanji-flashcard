@@ -11,7 +11,8 @@ import 'hiragana_to_romaji_map.dart';
 
 class MyAppState extends ChangeNotifier {
   String word = '';
-  List<String> readings = []; 
+  List<String> readings = [];
+  List<String> meanings =[]; 
   String romaji = '';
   var favorites = <FavoriteModel>[];
   String wordId = '';
@@ -23,8 +24,10 @@ class MyAppState extends ChangeNotifier {
 
   // Fetch random word from the API
   Future<void> getRandomWord(BuildContext context) async {
+
+    
     final url = Uri.parse(
-      'https://api.wanikani.com/v2/subjects?types=kanji&levels=1,2,3',
+      'https://api.wanikani.com/v2/subjects?types=kanji&levels=1,2,3,4,5',
     );
     final List allItems = [];
 
@@ -101,6 +104,10 @@ class MyAppState extends ChangeNotifier {
         ?.map((item) => ReadingModel.fromJson(item))
         .toList() ?? [];
 
+    final List<WordMeaningModel> meaningsList = (randomItem['data']['meanings'] as List<dynamic>?)
+        ?.map((item) => WordMeaningModel.fromJson(item))
+        .toList() ?? [];
+
     // Update the readings list
     readings = readingsList.map((reading) => reading.reading).toList();
 
@@ -116,9 +123,7 @@ class MyAppState extends ChangeNotifier {
     kanji = Kanji(
       level: randomItem['data']['level'],
       characters: word,
-      wordMeanings: (randomItem['data']['meanings'] as List<dynamic>)
-          .map((meaning) => WordMeaning.fromJson(meaning))
-          .toList(),
+      wordMeanings: meaningsList,
       readings: readingsList,
     );
 
@@ -129,7 +134,7 @@ class MyAppState extends ChangeNotifier {
   // Convert Hiragana readings to Romaji
   String convertToRomaji(List<String> readings) {
     return readings
-        .map((reading) => reading.split('').map((char) => hiraganaToRomajiMap[char] ?? char).join())
+        .map((reading) => reading.split('').map((char) => hiraganaToRomajiMap[char] ?? char))
         .join(', ');  // Join individual readings with a comma
   }
 

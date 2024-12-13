@@ -22,18 +22,30 @@ class FavoritesWordPage extends StatelessWidget {
         return ListTile(
           title: Row(
             children: [
-              Icon(Icons.favorite, size: 20),  
+              Icon(Icons.favorite, size: 20),
               SizedBox(width: 8),
-              Text(favorite.word),
+              Text(favorite.word, 
+              style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.bold
+              ),),
             ],
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Onyomi: ${favorite.onyomiReadings}'),
-              Text('Kunyomi: ${favorite.kunyomiReadings}'),
-              Text('Nanori: ${favorite.nanoriReadings}'),
-              // Text('Meaning: ${favorite.wordMeanings}'),
+              if (favorite.onyomiReadings.isNotEmpty)
+                Text('Onyomi: ${favorite.onyomiReadings.join(', ')}'),
+              if (favorite.kunyomiReadings.isNotEmpty)
+                Text('Kunyomi: ${favorite.kunyomiReadings.join(', ')}'),
+              if (favorite.nanoriReadings.isNotEmpty)
+                Text('Nanori: ${favorite.nanoriReadings.join(', ')}'),
+              if (favorite.wordMeanings.isNotEmpty)
+                Text('Meaning: ${favorite.wordMeanings.join(', ')}'),
+              if (favorite.onyomiReadings.isEmpty &&
+                  favorite.kunyomiReadings.isEmpty &&
+                  favorite.nanoriReadings.isEmpty &&
+                  favorite.wordMeanings.isEmpty)
+                Text('No available readings or meanings.')
             ],
           ),
         );

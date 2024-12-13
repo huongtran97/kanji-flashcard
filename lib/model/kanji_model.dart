@@ -4,7 +4,7 @@ import 'package:japanese_flashcard_application/model/reading_model.dart';
 class Kanji {
   final int level;
   final String characters;
-  final List<WordMeaning> wordMeanings;
+  final List<WordMeaningModel> wordMeanings;
   final List<ReadingModel> readings;
 
   Kanji({
@@ -19,7 +19,7 @@ class Kanji {
       level: json['data']['level'],
       characters: json['data']['characters'],
       wordMeanings: (json['data']['meanings'] as List)
-          .map((meaning) => WordMeaning.fromJson(meaning))
+          .map((meaning) => WordMeaningModel.fromJson(meaning))
           .toList(),
       readings: (json['data']['readings'] as List)
           .map((reading) => ReadingModel.fromJson(reading))
