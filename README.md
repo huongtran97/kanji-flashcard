@@ -1,4 +1,4 @@
-## Introduction
+## Kanji Flashcard
 
 This is a basic Japanese Kanji flashcard application developed using [**Flutter**](https://flutter.dev) and [**Dart**](https://dart.dev). The app aims to support learners in studying Kanji effectively by sourcing its data from the [**WaniKani API**](https://docs.api.wanikani.com/), ensuring well-structured and accurate Kanji content.
 
@@ -17,5 +17,7 @@ This project was built to combine language learning with interactive practice to
 - [WaniKani API Documentation](https://docs.api.wanikani.com/)
 - [Flutter Documentation](https://flutter.dev/docs)
 - [Dart Language Documentation](https://dart.dev/guides)
+---
 
-  
+https://github.com/user-attachments/assets/04ed6529-6a71-4135-a93a-ce21b65f4075
+
