@@ -30,31 +30,116 @@ Map<String, String> hiraganaToRomajiMap = {
   'じゃ': 'ja', 'じゅ': 'ju', 'じょ': 'jo',
   'びゃ': 'bya', 'びゅ': 'byu', 'びょ': 'byo',
   'ぴゃ': 'pya', 'ぴゅ': 'pyu', 'ぴょ': 'pyo',
+
+  // Small Hiragana
+  'ぁ': 'a', 'ぃ': 'i', 'ぅ': 'u', 'ぇ': 'e', 'ぉ': 'o',
+  'ゃ': 'ya', 'ゅ': 'yu', 'ょ': 'yo',
+
 };
+
+// Katakana support
+Map<String, String> katakanaToRomajiMap = {
+  'ア': 'a', 'イ': 'i', 'ウ': 'u', 'エ': 'e', 'オ': 'o',
+  'カ': 'ka', 'キ': 'ki', 'ク': 'ku', 'ケ': 'ke', 'コ': 'ko',
+  'サ': 'sa', 'シ': 'shi', 'ス': 'su', 'セ': 'se', 'ソ': 'so',
+  'タ': 'ta', 'チ': 'chi', 'ツ': 'tsu', 'テ': 'te', 'ト': 'to',
+  'ナ': 'na', 'ニ': 'ni', 'ヌ': 'nu', 'ネ': 'ne', 'ノ': 'no',
+  'ハ': 'ha', 'ヒ': 'hi', 'フ': 'fu', 'ヘ': 'he', 'ホ': 'ho',
+  'マ': 'ma', 'ミ': 'mi', 'ム': 'mu', 'メ': 'me', 'モ': 'mo',
+  'ヤ': 'ya', 'ユ': 'yu', 'ヨ': 'yo',
+  'ラ': 'ra', 'リ': 'ri', 'ル': 'ru', 'レ': 're', 'ロ': 'ro',
+  'ワ': 'wa', 'ヲ': 'wo', 'ン': 'n',
+
+  // Katakana with Dakuten
+  'ガ': 'ga', 'ギ': 'gi', 'グ': 'gu', 'ゲ': 'ge', 'ゴ': 'go',
+  'ザ': 'za', 'ジ': 'ji', 'ズ': 'zu', 'ゼ': 'ze', 'ゾ': 'zo',
+  'ダ': 'da', 'ヂ': 'ji', 'ヅ': 'zu', 'デ': 'de', 'ド': 'do',
+  'バ': 'ba', 'ビ': 'bi', 'ブ': 'bu', 'ベ': 'be', 'ボ': 'bo',
+  'パ': 'pa', 'ピ': 'pi', 'プ': 'pu', 'ペ': 'pe', 'ポ': 'po',
+
+  // Yōon (Katakana combos)
+  'キャ': 'kya', 'キュ': 'kyu', 'キョ': 'kyo',
+  'シャ': 'sha', 'シュ': 'shu', 'ショ': 'sho',
+  'チャ': 'cha', 'チュ': 'chu', 'チョ': 'cho',
+  'ニャ': 'nya', 'ニュ': 'nyu', 'ニョ': 'nyo',
+  'ヒャ': 'hya', 'ヒュ': 'hyu', 'ヒョ': 'hyo',
+  'ミャ': 'mya', 'ミュ': 'myu', 'ミョ': 'myo',
+  'リャ': 'rya', 'リュ': 'ryu', 'リョ': 'ryo',
+  'ギャ': 'gya', 'ギュ': 'gyu', 'ギョ': 'gyo',
+  'ジャ': 'ja', 'ジュ': 'ju', 'ジョ': 'jo',
+  'ビャ': 'bya', 'ビュ': 'byu', 'ビョ': 'byo',
+  'ピャ': 'pya', 'ピュ': 'pyu', 'ピョ': 'pyo'
+
+};
+
+
+
+// Reverse the map for Romaji → Hiragana conversion
+Map<String, String> romajiToHiraganaMap = Map.fromEntries(
+  hiraganaToRomajiMap.entries.map((entry) => MapEntry(entry.value, entry.key))
+);
 
 // Function to convert Hiragana to Romaji
 String convertHiraganaToRomaji(String reading) {
   String romaji = '';
   int i = 0;
   
-  // Loop through the reading string
   while (i < reading.length) {
-    // Try to match 2-character sequences first 
-    if (i + 1 < reading.length && hiraganaToRomajiMap.containsKey(reading.substring(i, i + 2))) {
+    if (i + 1 < reading.length && reading[i] == 'っ') {
+      // "っ" (small tsu) is followed by a known character, double its consonant
+      String nextChar = reading[i + 1];
+      if (hiraganaToRomajiMap.containsKey(nextChar)) {
+        romaji += hiraganaToRomajiMap[nextChar]![0]; // Add first consonant
+      }
+      i++; // Skip "っ"
+    } 
+    else if (i + 1 < reading.length && hiraganaToRomajiMap.containsKey(reading.substring(i, i + 2))) {
       romaji += hiraganaToRomajiMap[reading.substring(i, i + 2)]!;
-      i += 2; // Move 2 characters forward
-    }
-    // If no match for 2 characters, try matching 1 character
+      i += 2;
+    } 
     else if (hiraganaToRomajiMap.containsKey(reading[i])) {
       romaji += hiraganaToRomajiMap[reading[i]]!;
-      i += 1; // Move 1 character forward
-    }
+      i++;
+    } 
+    else if (katakanaToRomajiMap.containsKey(reading[i])) {  // Check for Katakana
+      romaji += katakanaToRomajiMap[reading[i]]!;
+      i++;
+    } 
     else {
-      // Handle cases where a character doesn't match
-      romaji += reading[i]; 
-      i += 1;
+      // Leave it if it's a kanji or unsupported character 
+      romaji += reading[i];
+      i++;
+    }
+  }
+
+  return romaji;
+}
+
+
+// Function to convert Romaji to Hiragana
+String convertRomajiToHiragana(String romaji) {
+  String result = "";
+  String buffer = "";
+
+  for (int i = 0; i < romaji.length; i++) {
+    buffer += romaji[i];
+
+    // If buffer is "tt", replace it with "っ" (small tsu)
+    if (buffer.length == 2 && buffer[0] == buffer[1] && "kstnhmrywgzdbp".contains(buffer[0])) {
+      result += 'っ';
+      buffer = buffer[1]; // Keep the second letter in the buffer
+      continue;
+    }
+
+    if (romajiToHiraganaMap.containsKey(buffer)) {
+      result += romajiToHiraganaMap[buffer]!;
+      buffer = ""; // Reset buffer after finding a match
+    } else if (buffer.length > 2) { // No match, reset buffer
+      result += buffer[0]; 
+      buffer = buffer.substring(1);
     }
   }
   
-  return romaji;
+  return result + buffer; // Append remaining buffer
 }
+

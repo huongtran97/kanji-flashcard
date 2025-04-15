@@ -1,49 +1,82 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flip_card/flip_card.dart';
 import 'package:japanese_flashcard_application/hiragana_to_romaji_map.dart';
-import 'package:japanese_flashcard_application/model/meaning_model.dart';
-import 'package:japanese_flashcard_application/model/reading_model.dart';
-import 'package:provider/provider.dart';
 import 'package:japanese_flashcard_application/my_app_state.dart';
 import 'package:japanese_flashcard_application/model/favorite_model.dart'
     as favorite_model;
 import 'package:japanese_flashcard_application/model/kanji_model.dart';
+import 'package:japanese_flashcard_application/model/meaning_model.dart';
+import 'package:japanese_flashcard_application/model/reading_model.dart';
+import 'package:japanese_flashcard_application/transition_animation.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:provider/provider.dart';
 
 class RandomWordPage extends StatefulWidget {
   @override
   RandomWordPageState createState() => RandomWordPageState();
 }
 
-class RandomWordPageState extends State<RandomWordPage> {
+class RandomWordPageState extends State<RandomWordPage>
+    with SingleTickerProviderStateMixin {
   final GlobalKey<FlipCardState> cardKey = GlobalKey<FlipCardState>();
+  late AudioPlayer _audioPlayer;
   List<Map<String, dynamic>> wordHistory = [];
   int currentIndex = 0;
   bool isFlipped = false;
+  bool isPlaying = false;
+  bool isLoadingAudio = false;
+  late AnimationController _animationController;
+  String? pronunciationUrl;
 
   @override
   void initState() {
     super.initState();
-    _loadRandomWord(); // Load a random word when the page is initialized
+    _audioPlayer = AudioPlayer();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _loadRandomWord();
   }
 
   Future<void> _loadRandomWord() async {
     var appState = context.read<MyAppState>();
-
-    // Fetch a random kanji word from the app state
     await appState.getRandomWord(context);
 
     if (appState.kanji.readings.isNotEmpty) {
-      setState(() {
-        Kanji currentKanji = appState.kanji;
-        wordHistory.add({
-          'characters': currentKanji.characters,
-          'readings': currentKanji.readings, // List of ReadingModel
-          'meanings': currentKanji.wordMeanings, // List of WordMeaning
+      if (mounted) {
+        setState(() {
+          Kanji currentKanji = appState.kanji;
+          wordHistory.add({
+            'characters': currentKanji.characters,
+            'readings': currentKanji.readings,
+            'meanings': currentKanji.meanings,
+          });
+          currentIndex = wordHistory.length - 1;
         });
-        currentIndex =
-            wordHistory.length - 1; // Set the current index to the latest word
+      }
+    }
+  }
+
+  void playPronunciation(String pronunciationUrl) async {
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.setUrl(pronunciationUrl);
+      await _audioPlayer.play();
+      setState(() {
+        isPlaying = true;
       });
+
+      // Set the isPlaying to false when the audio finishes
+      _audioPlayer.positionStream.listen((position) {
+        if (position == Duration.zero) {
+          setState(() {
+            isPlaying = false;
+          });
+        }
+      });
+    } catch (e) {
+      print("Error playing pronunciation: $e");
     }
   }
 
@@ -56,54 +89,102 @@ class RandomWordPageState extends State<RandomWordPage> {
     }
   }
 
+Future<void> _loadAudio() async {
+  if (wordHistory.isEmpty || currentIndex >= wordHistory.length) {
+    print("No valid character found for currentIndex");
+    return;
+  }
+
+  var currentWord = wordHistory[currentIndex];
+  var characters = currentWord['characters'];
+
+  if (characters != null && characters.isNotEmpty) {
+    setState(() {
+      isLoadingAudio = true; // Loading animation
+    });
+
+    print("Fetching pronunciation audio for character: $characters");
+
+    try {
+      
+      var appState = context.read<MyAppState>();
+      String? audioUrl = await appState.fetchPronunciationForCurrentWord(characters);
+
+      if (audioUrl != null) {
+        print("Playing audio from URL: $audioUrl");
+
+        try {
+          await _audioPlayer.stop();
+          await _audioPlayer.setUrl(audioUrl);
+
+          // Listen for completion
+          _audioPlayer.playerStateStream.listen((state) {
+            if (state.processingState == ProcessingState.completed) {
+              if (mounted) {
+                setState(() {
+                  isPlaying = false;
+                  isLoadingAudio = false;
+                });
+              }
+            }
+          });
+
+          await _audioPlayer.play();
+
+          setState(() {
+            isPlaying = true;
+          });
+        } catch (e) {
+          print("Error playing audio: $e");
+          setState(() {
+            isLoadingAudio = false;
+            isPlaying = false;
+          });
+        }
+      } else {
+        print("No audio found for character: $characters");
+        setState(() {
+          isLoadingAudio = false;
+        });
+      }
+    } catch (e) {
+      print("Error fetching pronunciation audio: $e");
+      setState(() {
+        isLoadingAudio = false;
+      });
+    }
+  } else {
+    print("No valid character found for currentIndex");
+  }
+}
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
   void _toggleFavorite() {
     var appState = context.read<MyAppState>();
     var currentWord = wordHistory[currentIndex];
+   
     var character = currentWord['characters'] as String;
-    var readings = currentWord['readings']; // List of ReadingModel
-    var meanings = currentWord['meanings']; //List of WordMeaning
-
-    // Separate readings into categories based on type (onyomi, kunyomi, nanori.)
-    var onyomiReadings = readings
-        .where((reading) => reading.type == 'onyomi')
-        .map((reading) => reading.reading)
-        .toList()
-        .cast<String>();
-
-    var kunyomiReadings = readings
-        .where((reading) => reading.type == 'kunyomi')
-        .map((reading) => reading.reading)
-        .toList()
-        .cast<String>();
-
-    var nanoriReadings = readings
-        .where((reading) => reading.type == 'nanori')
-        .map((reading) => reading.reading)
-        .toList()
-        .cast<String>();
+    var readings = currentWord['readings'] as List<ReadingModel>;
+    var meanings = currentWord['meanings'] as List<MeaningModel>;
 
     var charactersMeanings = meanings
-        .where((WordMeaningModel meaning) => meaning.acceptedAnswer)
-        .map((WordMeaningModel meaning) => meaning.meaning)
-        .toList()
-        .cast<String>();
-
-    // Create a FavoriteModel instance
+        .where((MeaningModel meaning) => meaning.acceptedAnswer)
+        .map((MeaningModel meaning) => meaning.meaning)
+        .toList();
     var favorite = favorite_model.FavoriteModel(
-      word: character,
-      onyomiReadings: onyomiReadings,
-      kunyomiReadings: kunyomiReadings,
-      nanoriReadings: nanoriReadings,
-      wordMeanings: charactersMeanings,
+     
+      kanji: character,
+      readings: readings,
+      meanings: charactersMeanings,
     );
-
-    // Toggle the favorite in app state
     appState.toggleFavorite(favorite);
-
-    setState(() {});
   }
-
-  // Method to convert kanji or readings to romaji
 
   @override
   Widget build(BuildContext context) {
@@ -115,50 +196,25 @@ class RandomWordPageState extends State<RandomWordPage> {
 
     var currentWord = wordHistory[currentIndex];
     var word = currentWord['characters'] as String;
-    var readings = currentWord['readings'] as List<ReadingModel>;
-    var meanings = currentWord['meanings'] as List<WordMeaningModel>;
+    List<ReadingModel> readings = currentWord['readings'] as List<ReadingModel>;
+    var meanings = currentWord['meanings'] as List<MeaningModel>;
 
-    // Separate readings by type
-    var onyomiReadings = readings
-        .where((reading) => reading.type == 'onyomi')
-        .map((reading) => reading.reading)
-        .toList()
-        .cast<String>();
+    
 
-    var kunyomiReadings = readings
-        .where((reading) => reading.type == 'kunyomi')
-        .map((reading) => reading.reading)
-        .toList()
-        .cast<String>();
-
-    var nanoriReadings = readings
-        .where((reading) => reading.type == 'nanori')
-        .map((reading) => reading.reading)
-        .toList()
-        .cast<String>();
-
-    var wordMeanings = meanings
-        .where((meaning) => meaning.acceptedAnswer)
-        .map((meaning) => meaning.meaning)
-        .toList()
-        .cast<String>();
-
-    bool isFavorite = appState.favorites.any((favorite) =>
-        favorite.word == word &&
-        listEquals(favorite.onyomiReadings, onyomiReadings) &&
-        listEquals(favorite.kunyomiReadings, kunyomiReadings) &&
-        listEquals(favorite.nanoriReadings, nanoriReadings) &&
-        listEquals(favorite.wordMeanings, wordMeanings));
+    bool isFavorite =
+        appState.favorites.any((favorite) => favorite.kanji == word);
 
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           GestureDetector(
-            onTap: () => cardKey.currentState?.toggleCard(),
+            onTap: () {
+              cardKey.currentState?.toggleCard();
+            },
             child: SizedBox(
-              width: 300,
-              height: 400,
+              width: 450,
+              height: 550,
               child: FlipCard(
                 key: cardKey,
                 front: Container(
@@ -169,13 +225,11 @@ class RandomWordPageState extends State<RandomWordPage> {
                   child: Center(
                     child: Text(
                       word,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineMedium
-                          ?.copyWith(
-                              fontSize: 120,
-                              color: Theme.of(context).colorScheme.onPrimary,
-                              fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: 90,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -189,70 +243,67 @@ class RandomWordPageState extends State<RandomWordPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (onyomiReadings.isNotEmpty) ...[
-                          Text(
-                            'Onyomi: ${onyomiReadings.join(', ')}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyLarge
-                                ?.copyWith(
-                                    fontSize: 17,
-                                    color: Colors.blueAccent,
-                                    fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            'Romaji: ${convertHiraganaToRomaji(onyomiReadings.join(', '))}',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                        SizedBox(height: 10),
-                        if (kunyomiReadings.isNotEmpty) ...[
-                          Text(
-                            'Kunyomi: ${kunyomiReadings.join(', ')}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyLarge
-                                ?.copyWith(
-                                    fontSize: 17,
-                                    color: Colors.blueAccent,
-                                    fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            'Romaji: ${convertHiraganaToRomaji(kunyomiReadings.join(', '))}',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                        SizedBox(height: 10),
-                        if (nanoriReadings.isNotEmpty) ...[
-                          Text(
-                            'Nanori: ${nanoriReadings.join(', ')}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyLarge
-                                ?.copyWith(
-                                    fontSize: 17,
-                                    color: Colors.blueAccent,
-                                    fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            'Romaji: ${convertHiraganaToRomaji(nanoriReadings.join(', '))}',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                        SizedBox(height: 25),
                         Text(
-                          wordMeanings.join(', '),
+                          readings.map((reading) => reading.reading).join(', '),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineLarge
+                              ?.copyWith(
+                                  fontSize: 55,
+                                  color: Colors.blueAccent,
+                                  fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 25),
+                        IconButton(
+                          onPressed: () {
+                            _loadAudio();
+                          },
+                          icon: AnimatedSwitcher(
+                            duration: Duration(milliseconds: 300),
+                            transitionBuilder:
+                                (Widget child, Animation<double> animation) {
+                              return FadeTransition(
+                                  opacity: animation, child: child);
+                            },
+                            child: isLoadingAudio
+                                ? JumpingDotsLoadingIndicator(
+                                    color: Colors.black,
+                                    size: 8,
+                                  )
+                                : Icon(
+                                    Icons.volume_up,
+                                    key: ValueKey<String>("volume_icon"),
+                                    size: 30,
+                                    color: Colors.black,
+                                  ),
+                          ),
+                        ),
+                        Text(
+                          convertHiraganaToRomaji(readings
+                              .map((readingModel) => readingModel.reading)
+                              .join(', ')),
+                          textAlign: TextAlign.center,
                           style: Theme.of(context)
                               .textTheme
                               .bodyLarge
                               ?.copyWith(
-                                  fontSize: 23,
+                                  fontSize: 20,
+                                  color: const Color.fromARGB(255, 10, 64, 156),
+                                  fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 35),
+                        Text(
+                          meanings.map((meaning) => meaning.meaning).join(', '),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                  fontSize: 20,
                                   color: Colors.blueAccent,
                                   fontWeight: FontWeight.bold),
-                        )
+                        ),
                       ],
                     ),
                   ),
