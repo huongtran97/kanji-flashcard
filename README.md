@@ -8,8 +8,8 @@ This is a basic Japanese Kanji flashcard application developed using [**Flutter*
 - 🔊 **Audio Support** – Each Kanji character includes native pronunciation audio to guide learners in reading the Kanji correctly.  
 - ✍️ **Writing Practice** – Practice writing Kanji using **Romaji** input, helping reinforce memorization and recognition.  
 - 📚 **Vocabulary Lookup** – Search and review Kanji vocabulary from WaniKani **levels 1 to 80**, perfect for beginners and intermediate learners.
-
-This project was built to combine language learning with interactive practice tools, making studying Kanji easier and more enjoyable for beginners.
+  
+ #### This project was built to combine language learning with interactive practice tools, making studying Kanji easier and more enjoyable for beginners.
 ---
 
 ## References
